@@ -52,9 +52,9 @@
         <div class="mb-3">
             <label class="form-label">Status</label>
             <InputSelect class="form-select" @bind-Value="model.Status">
-                <option value="0">Active</option>
-                <option value="1">Maintenance</option>
-                <option value="2">Retired</option>
+                <option value="Active">Active</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Retired">Retired</option>
             </InputSelect>
         </div>
         <button class="btn btn-primary" type="submit" disabled="@isLoading">
@@ -112,7 +112,7 @@
         public string? ImageUrl { get; set; }
         public decimal DailyRate { get; set; }
         public int TotalUnits { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; } = "Active";
     }
 
     private class CategoryDto
