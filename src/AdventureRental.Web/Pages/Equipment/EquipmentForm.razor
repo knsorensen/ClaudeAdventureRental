@@ -1,0 +1,123 @@
+@page "/admin/equipment/new"
+@page "/admin/equipment/{Id:int}/edit"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>@(Id == null ? "New Equipment" : "Edit Equipment")</PageTitle>
+
+<div class="container mt-4" style="max-width:600px;">
+    <h2>@(Id == null ? "Add Equipment" : "Edit Equipment")</h2>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+            <InputSelect class="form-select" @bind-Value="model.CategoryId">
+                <option value="0">-- Select Category --</option>
+                @foreach (var cat in categories)
+                {
+                    <option value="@cat.Id">@cat.Name</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="model.Name" />
+            <ValidationMessage For="@(() => model.Name)" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea class="form-control" @bind-Value="model.Description" rows="3" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Image URL</label>
+            <InputText class="form-control" @bind-Value="model.ImageUrl" />
+        </div>
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Daily Rate ($)</label>
+                <InputNumber class="form-control" @bind-Value="model.DailyRate" />
+            </div>
+            <div class="col">
+                <label class="form-label">Total Units</label>
+                <InputNumber class="form-control" @bind-Value="model.TotalUnits" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Status</label>
+            <InputSelect class="form-select" @bind-Value="model.Status">
+                <option value="0">Active</option>
+                <option value="1">Maintenance</option>
+                <option value="2">Retired</option>
+            </InputSelect>
+        </div>
+        <button class="btn btn-primary" type="submit" disabled="@isLoading">
+            @(isLoading ? "Saving..." : "Save")
+        </button>
+        <a href="equipment" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private EquipmentFormModel model = new();
+    private List<CategoryDto> categories = new();
+    private string? errorMessage;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cats = await Http.GetFromJsonAsync<List<CategoryDto>>("api/v1/equipment-categories");
+        categories = cats ?? new();
+
+        if (Id.HasValue)
+        {
+            var equipment = await Http.GetFromJsonAsync<EquipmentFormModel>($"api/v1/equipment/{Id}");
+            if (equipment != null) model = equipment;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isLoading = true;
+        errorMessage = null;
+        HttpResponseMessage response;
+        try
+        {
+            response = Id.HasValue
+                ? await Http.PutAsJsonAsync($"api/v1/equipment/{Id}", model)
+                : await Http.PostAsJsonAsync("api/v1/equipment", model);
+
+            if (response.IsSuccessStatusCode)
+                Navigation.NavigateTo("equipment");
+            else
+                errorMessage = "Failed to save equipment.";
+        }
+        catch { errorMessage = "Unable to connect to the server."; }
+        finally { isLoading = false; }
+    }
+
+    private class EquipmentFormModel
+    {
+        public int CategoryId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public decimal DailyRate { get; set; }
+        public int TotalUnits { get; set; }
+        public int Status { get; set; }
+    }
+
+    private class CategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

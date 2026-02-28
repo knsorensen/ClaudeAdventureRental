@@ -1,0 +1,118 @@
+@page "/admin/customers/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Customer Detail</PageTitle>
+
+<div class="container mt-4" style="max-width:500px;">
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (customer == null)
+    {
+        <p>Customer not found.</p>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="admin/customers">Customers</a></li>
+                <li class="breadcrumb-item active">@customer.FirstName @customer.LastName</li>
+            </ol>
+        </nav>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm Model="model" OnValidSubmit="HandleSave">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">First Name</label>
+                <InputText class="form-control" @bind-Value="model.FirstName" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Last Name</label>
+                <InputText class="form-control" @bind-Value="model.LastName" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input class="form-control" value="@customer.Email" readonly />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <InputText class="form-control" @bind-Value="model.Phone" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Address</label>
+                <InputText class="form-control" @bind-Value="model.Address" />
+            </div>
+            <button class="btn btn-primary" type="submit" disabled="@isActing">Save</button>
+            <a href="admin/customers" class="btn btn-outline-secondary ms-2">Back</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private CustomerDto? customer;
+    private CustomerUpdateModel model = new();
+    private bool isLoading = true;
+    private bool isActing;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customer = await Http.GetFromJsonAsync<CustomerDto>($"api/v1/customers/{Id}");
+        if (customer != null)
+        {
+            model.FirstName = customer.FirstName;
+            model.LastName = customer.LastName;
+            model.Phone = customer.Phone;
+            model.Address = customer.Address;
+        }
+        isLoading = false;
+    }
+
+    private async Task HandleSave()
+    {
+        isActing = true;
+        errorMessage = null;
+        successMessage = null;
+        var response = await Http.PutAsJsonAsync($"api/v1/customers/{Id}", model);
+        if (response.IsSuccessStatusCode)
+            successMessage = "Customer updated successfully.";
+        else
+            errorMessage = "Failed to update customer.";
+        isActing = false;
+    }
+
+    private class CustomerDto
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+    }
+
+    private class CustomerUpdateModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string FirstName { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required]
+        public string LastName { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+    }
+}

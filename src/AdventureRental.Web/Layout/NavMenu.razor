@@ -1,0 +1,65 @@
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">AdventureRental</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="equipment">
+                <span class="bi bi-backpack4-fill-nav-menu" aria-hidden="true"></span> Equipment
+            </NavLink>
+        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="reservations">
+                        <span class="bi bi-calendar-check-fill-nav-menu" aria-hidden="true"></span> My Reservations
+                    </NavLink>
+                </div>
+                <AuthorizeView Roles="Admin" Context="adminCtx">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/customers">
+                            <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Customers
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <div class="nav-item px-3">
+                    <button class="nav-link btn btn-link text-white" @onclick="Logout">Logout</button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="auth/login">Login</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="auth/register">Register</NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    [Inject] private JwtAuthStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private bool collapseNavMenu = true;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+
+    private async Task Logout()
+    {
+        await AuthStateProvider.ClearTokenAsync();
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

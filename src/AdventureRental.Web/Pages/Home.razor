@@ -1,0 +1,20 @@
+@page "/"
+
+<PageTitle>AdventureRental — Home</PageTitle>
+
+<div class="container mt-4">
+    <div class="p-5 bg-light rounded">
+        <h1 class="display-4">Adventure Awaits!</h1>
+        <p class="lead">Browse and rent high-quality adventure equipment for your next outdoor adventure.</p>
+        <hr class="my-4" />
+        <a class="btn btn-primary btn-lg" href="equipment">Browse Equipment</a>
+        <AuthorizeView>
+            <NotAuthorized>
+                <a class="btn btn-outline-secondary btn-lg ms-2" href="auth/register">Get Started</a>
+            </NotAuthorized>
+            <Authorized>
+                <a class="btn btn-success btn-lg ms-2" href="reservations/new">Make a Reservation</a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+</div>

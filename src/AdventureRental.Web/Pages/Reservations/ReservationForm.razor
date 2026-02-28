@@ -1,0 +1,140 @@
+@page "/reservations/new"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>New Reservation</PageTitle>
+
+<div class="container mt-4" style="max-width:600px;">
+    <h2>New Reservation</h2>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Start Date</label>
+                <InputDate class="form-control" @bind-Value="model.StartDate" />
+            </div>
+            <div class="col">
+                <label class="form-label">End Date</label>
+                <InputDate class="form-control" @bind-Value="model.EndDate" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" rows="2" />
+        </div>
+
+        <h5>Equipment</h5>
+        @for (int i = 0; i < model.Items.Count; i++)
+        {
+            var idx = i;
+            <div class="row mb-2 align-items-center">
+                <div class="col-7">
+                    <InputSelect class="form-select" @bind-Value="model.Items[idx].EquipmentId">
+                        <option value="0">-- Select Equipment --</option>
+                        @foreach (var e in equipment)
+                        {
+                            <option value="@e.Id">@e.Name ($@e.DailyRate.ToString("F2")/day)</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-3">
+                    <InputNumber class="form-control" @bind-Value="model.Items[idx].Quantity" placeholder="Qty" min="1" />
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => RemoveItem(idx)">X</button>
+                </div>
+            </div>
+        }
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" @onclick="AddItem">+ Add Item</button>
+
+        <div class="mt-3">
+            <button class="btn btn-primary" type="submit" disabled="@isLoading">
+                @(isLoading ? "Creating..." : "Create Reservation")
+            </button>
+            <a href="reservations" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private int? EquipmentId { get; set; }
+
+    private ReservationModel model = new();
+    private List<EquipmentDto> equipment = new();
+    private string? errorMessage;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<PagedResult>("api/v1/equipment?page=1&pageSize=100");
+        equipment = result?.Items ?? new();
+
+        model.StartDate = DateTime.Today.AddDays(1);
+        model.EndDate = DateTime.Today.AddDays(4);
+
+        if (EquipmentId.HasValue)
+            model.Items.Add(new ItemModel { EquipmentId = EquipmentId.Value, Quantity = 1 });
+        else
+            model.Items.Add(new ItemModel());
+    }
+
+    private void AddItem() => model.Items.Add(new ItemModel());
+    private void RemoveItem(int i) { if (model.Items.Count > 1) model.Items.RemoveAt(i); }
+
+    private async Task HandleSubmit()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/v1/reservations", model);
+            if (response.IsSuccessStatusCode)
+                Navigation.NavigateTo("/reservations");
+            else
+            {
+                var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                errorMessage = err?.Message ?? "Failed to create reservation.";
+            }
+        }
+        catch { errorMessage = "Unable to connect to the server."; }
+        finally { isLoading = false; }
+    }
+
+    private class ReservationModel
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string? Notes { get; set; }
+        public List<ItemModel> Items { get; set; } = new();
+    }
+
+    private class ItemModel
+    {
+        public int EquipmentId { get; set; }
+        public int Quantity { get; set; } = 1;
+    }
+
+    private class EquipmentDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal DailyRate { get; set; }
+    }
+
+    private class PagedResult
+    {
+        public List<EquipmentDto>? Items { get; set; }
+    }
+
+    private class ErrorResponse
+    {
+        public string? Message { get; set; }
+    }
+}

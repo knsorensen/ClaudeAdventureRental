@@ -1,0 +1,76 @@
+@page "/equipment/{Id:int}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>@(equipment?.Name ?? "Equipment Detail")</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (equipment == null)
+    {
+        <p>Equipment not found.</p>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="equipment">Equipment</a></li>
+                <li class="breadcrumb-item active">@equipment.Name</li>
+            </ol>
+        </nav>
+        <div class="row">
+            <div class="col-md-5">
+                @if (!string.IsNullOrEmpty(equipment.ImageUrl))
+                {
+                    <img src="@equipment.ImageUrl" class="img-fluid rounded" alt="@equipment.Name" />
+                }
+            </div>
+            <div class="col-md-7">
+                <span class="badge bg-secondary mb-2">@equipment.CategoryName</span>
+                <h2>@equipment.Name</h2>
+                <p>@equipment.Description</p>
+                <h4 class="text-primary">$@equipment.DailyRate.ToString("F2") / day</h4>
+                <p class="text-muted">@equipment.TotalUnits units available</p>
+
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="reservations/new?equipmentId=@equipment.Id" class="btn btn-success me-2">Rent Now</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="auth/login" class="btn btn-primary">Login to Rent</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+                <AuthorizeView Roles="Admin">
+                    <a href="admin/equipment/@equipment.Id/edit" class="btn btn-outline-secondary">Edit</a>
+                </AuthorizeView>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private EquipmentDto? equipment;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        equipment = await Http.GetFromJsonAsync<EquipmentDto>($"api/v1/equipment/{Id}");
+        isLoading = false;
+    }
+
+    private class EquipmentDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public decimal DailyRate { get; set; }
+        public int TotalUnits { get; set; }
+    }
+}

@@ -1,0 +1,79 @@
+@page "/reservations"
+@attribute [Authorize]
+@inject HttpClient Http
+
+<PageTitle>My Reservations</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>My Reservations</h2>
+        <a href="reservations/new" class="btn btn-success">+ New Reservation</a>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (!reservations.Any())
+    {
+        <div class="alert alert-info">No reservations yet. <a href="equipment">Browse equipment</a> to get started.</div>
+    }
+    else
+    {
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Dates</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in reservations)
+                {
+                    <tr>
+                        <td>@r.Id</td>
+                        <td>@r.StartDate.ToString("MMM d") — @r.EndDate.ToString("MMM d, yyyy")</td>
+                        <td>@r.ItemCount item(s)</td>
+                        <td>$@r.TotalPrice.ToString("F2")</td>
+                        <td><span class="badge bg-@StatusColor(r.Status)">@r.Status</span></td>
+                        <td><a href="reservations/@r.Id" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<ReservationDto> reservations = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<List<ReservationDto>>("api/v1/reservations/my");
+        reservations = result ?? new();
+        isLoading = false;
+    }
+
+    private static string StatusColor(string status) => status switch
+    {
+        "Confirmed" => "success",
+        "Cancelled" => "danger",
+        "Completed" => "secondary",
+        _ => "warning"
+    };
+
+    private class ReservationDto
+    {
+        public int Id { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public decimal TotalPrice { get; set; }
+        public int ItemCount { get; set; }
+    }
+}

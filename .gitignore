@@ -1,0 +1,37 @@
+## .NET
+obj/
+bin/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## Build output
+[Pp]ublish/
+[Dd]ebug/
+[Rr]elease/
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+## dotnet tools
+.dotnet/
+
+## User secrets (stored at OS level, not here)
+# appsettings.Development.json is intentionally not excluded for dev convenience
+
+## Logs
+*.log
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## IDE
+.vscode/
+.idea/
+*.swp

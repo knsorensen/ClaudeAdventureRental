@@ -1,0 +1,66 @@
+@page "/admin/customers"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+
+<PageTitle>Customers</PageTitle>
+
+<div class="container mt-4">
+    <h2>Customers</h2>
+
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (!customers.Any())
+    {
+        <p>No customers found.</p>
+    }
+    else
+    {
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Joined</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in customers)
+                {
+                    <tr>
+                        <td>@c.FirstName @c.LastName</td>
+                        <td>@c.Email</td>
+                        <td>@(c.Phone ?? "—")</td>
+                        <td>@c.CreatedAt.ToString("MMM d, yyyy")</td>
+                        <td><a href="admin/customers/@c.Id" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<CustomerDto> customers = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<List<CustomerDto>>("api/v1/customers");
+        customers = result ?? new();
+        isLoading = false;
+    }
+
+    private class CustomerDto
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}

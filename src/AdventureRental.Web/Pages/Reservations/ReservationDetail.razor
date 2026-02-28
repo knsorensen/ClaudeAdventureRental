@@ -1,0 +1,129 @@
+@page "/reservations/{Id:int}"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Reservation #@Id</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (reservation == null)
+    {
+        <p>Reservation not found.</p>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="reservations">Reservations</a></li>
+                <li class="breadcrumb-item active">Reservation #@Id</li>
+            </ol>
+        </nav>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Reservation #@reservation.Id</span>
+                <span class="badge bg-@StatusColor(reservation.Status)">@reservation.Status</span>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Customer</dt>
+                    <dd class="col-sm-9">@reservation.CustomerName</dd>
+                    <dt class="col-sm-3">Dates</dt>
+                    <dd class="col-sm-9">@reservation.StartDate.ToString("MMM d, yyyy") — @reservation.EndDate.ToString("MMM d, yyyy")</dd>
+                    <dt class="col-sm-3">Total Price</dt>
+                    <dd class="col-sm-9">$@reservation.TotalPrice.ToString("F2")</dd>
+                    @if (!string.IsNullOrEmpty(reservation.Notes))
+                    {
+                        <dt class="col-sm-3">Notes</dt>
+                        <dd class="col-sm-9">@reservation.Notes</dd>
+                    }
+                </dl>
+
+                <h5>Items</h5>
+                <table class="table">
+                    <thead><tr><th>Equipment</th><th>Qty</th><th>Rate/day</th><th>Line Total</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in reservation.Items)
+                        {
+                            <tr>
+                                <td>@item.EquipmentName</td>
+                                <td>@item.Quantity</td>
+                                <td>$@item.DailyRate.ToString("F2")</td>
+                                <td>$@item.LineTotal.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                @if (reservation.Status == "Pending" || reservation.Status == "Confirmed")
+                {
+                    <button class="btn btn-danger" @onclick="CancelReservation" disabled="@isActing">Cancel</button>
+                }
+                @if (!string.IsNullOrEmpty(actionError))
+                {
+                    <span class="text-danger ms-3">@actionError</span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ReservationDto? reservation;
+    private bool isLoading = true;
+    private bool isActing;
+    private string? actionError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reservation = await Http.GetFromJsonAsync<ReservationDto>($"api/v1/reservations/{Id}");
+        isLoading = false;
+    }
+
+    private async Task CancelReservation()
+    {
+        isActing = true;
+        actionError = null;
+        var response = await Http.PutAsync($"api/v1/reservations/{Id}/cancel", null);
+        if (response.IsSuccessStatusCode)
+            Navigation.NavigateTo("/reservations");
+        else
+            actionError = "Failed to cancel reservation.";
+        isActing = false;
+    }
+
+    private static string StatusColor(string status) => status switch
+    {
+        "Confirmed" => "success",
+        "Cancelled" => "danger",
+        "Completed" => "secondary",
+        _ => "warning"
+    };
+
+    private class ReservationDto
+    {
+        public int Id { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public decimal TotalPrice { get; set; }
+        public string? Notes { get; set; }
+        public List<ItemDto> Items { get; set; } = new();
+    }
+
+    private class ItemDto
+    {
+        public string EquipmentName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal DailyRate { get; set; }
+        public decimal LineTotal { get; set; }
+    }
+}
