@@ -106,6 +106,26 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseResponseCompression();
+
+// Prevent browser from caching Blazor WASM assets in development so a
+// page reload always picks up the latest build without needing Ctrl+Shift+R.
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (ctx, next) =>
+    {
+        ctx.Response.OnStarting(() =>
+        {
+            if (ctx.Request.Path.StartsWithSegments("/_framework"))
+            {
+                ctx.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                ctx.Response.Headers["Pragma"] = "no-cache";
+            }
+            return Task.CompletedTask;
+        });
+        await next();
+    });
+}
+
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
