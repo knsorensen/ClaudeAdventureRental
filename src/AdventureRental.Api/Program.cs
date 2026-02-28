@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using AdventureRental.Core.Interfaces;
 using AdventureRental.Infrastructure.Data;
 using AdventureRental.Infrastructure.Services;
@@ -56,7 +57,9 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SeedDataService>();
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Swagger
 builder.Services.AddSwaggerGen(c =>
