@@ -20,8 +20,8 @@ packages/
 ## dotnet tools
 .dotnet/
 
-## User secrets (stored at OS level, not here)
-# appsettings.Development.json is intentionally not excluded for dev convenience
+## User secrets and local dev config (stored at OS level or gitignored)
+appsettings.Development.json
 
 ## Logs
 *.log
