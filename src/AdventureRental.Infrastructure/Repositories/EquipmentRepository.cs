@@ -52,6 +52,9 @@ public class EquipmentRepository : IEquipmentRepository
 
     public async Task<int> GetAvailableUnitsAsync(int equipmentId, DateTime startDate, DateTime endDate)
     {
+        startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
         var equipment = await _db.Equipment.FindAsync(equipmentId);
         if (equipment == null) return 0;
 

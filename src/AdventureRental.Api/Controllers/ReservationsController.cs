@@ -56,6 +56,10 @@ public class ReservationsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ReservationDto>> Create(CreateReservationRequest request)
     {
+        // Npgsql requires UTC datetimes for timestamptz columns
+        request.StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc);
+        request.EndDate = DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc);
+
         if (request.StartDate >= request.EndDate)
             return BadRequest(new { message = "EndDate must be after StartDate." });
 
