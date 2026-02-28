@@ -114,6 +114,7 @@ dotnet ef database update -p src/AdventureRental.Infrastructure -s src/Adventure
 | My Reservations | `/reservations` | Authenticated |
 | Reservation detail | `/reservations/{Id}` | Authenticated |
 | New Reservation | `/reservations/new` | Authenticated |
+| All Reservations | `/admin/reservations` | Admin |
 | Customer list | `/admin/customers` | Admin |
 | Customer detail | `/admin/customers/{Id}` | Admin |
 
@@ -122,3 +123,6 @@ dotnet ef database update -p src/AdventureRental.Infrastructure -s src/Adventure
 - When using `@page` as a C# variable name inside Blazor HTML, write `@(page)` to avoid the Razor parser treating it as the `@page` directive.
 - Nested `<AuthorizeView>` components require a unique `Context="name"` attribute on inner components to avoid parameter name conflicts.
 - `DOTNET_ROOT` must be set before running `dotnet ef` or other global tools when .NET is user-installed.
+- **Enum serialization**: All API enums (`ReservationStatus`, `EquipmentStatus`) are serialized as strings (`"Pending"`, `"Active"`, etc.) via `JsonStringEnumConverter` in `Program.cs`. Blazor-side DTOs must use `string` (not `int`) for status fields, and `<option>` values in forms must match the string name.
+- **DateTime / PostgreSQL**: Npgsql requires `DateTime.Kind=Utc` for `timestamptz` columns. Normalize incoming dates at the controller boundary with `DateTime.SpecifyKind(date, DateTimeKind.Utc)` before passing to EF Core.
+- **Blazor WASM cache in development**: The API serves `/_framework/*` files with `Cache-Control: no-cache` in Development mode so rebuilds are picked up on a normal reload. If you see "An unhandled error has occurred" after a rebuild, do one hard refresh (`Ctrl+Shift+R`) to clear any pre-existing stale cache.

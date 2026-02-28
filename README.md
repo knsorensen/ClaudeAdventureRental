@@ -6,7 +6,7 @@ A motorcycle rental web application built with .NET 9. Customers can browse and 
 
 - **Equipment catalogue** — browse motorcycles by category, search by name, paginated grid with photos
 - **Reservations** — authenticated customers select dates and equipment, system checks live availability
-- **Admin panel** — manage equipment, categories, customers, and reservation status
+- **Admin panel** — manage equipment, categories, customers; view and action all reservations (confirm, complete, cancel)
 - **JWT authentication** — register/login with email; roles: `Admin` and `Customer`
 - **Swagger UI** — interactive API docs with JWT bearer support at `/swagger`
 
