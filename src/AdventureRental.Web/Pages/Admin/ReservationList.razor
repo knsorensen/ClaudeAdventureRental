@@ -1,0 +1,130 @@
+@page "/admin/reservations"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+
+<PageTitle>All Reservations</PageTitle>
+
+<div class="container mt-4">
+    <h2>All Reservations</h2>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert @messageClass alert-dismissible">
+            @message
+            <button type="button" class="btn-close" @onclick="() => message = null"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (!reservations.Any())
+    {
+        <div class="alert alert-info">No reservations found.</div>
+    }
+    else
+    {
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Customer</th>
+                    <th>Dates</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in reservations)
+                {
+                    <tr>
+                        <td>@r.Id</td>
+                        <td>@r.CustomerName</td>
+                        <td>@r.StartDate.ToString("MMM d") — @r.EndDate.ToString("MMM d, yyyy")</td>
+                        <td>@r.Items.Count item(s)</td>
+                        <td>$@r.TotalPrice.ToString("F2")</td>
+                        <td><span class="badge bg-@StatusColor(r.Status)">@r.Status</span></td>
+                        <td>
+                            <a href="reservations/@r.Id" class="btn btn-sm btn-outline-primary me-1">View</a>
+                            @if (r.Status == "Pending")
+                            {
+                                <button class="btn btn-sm btn-success me-1" @onclick="() => Confirm(r.Id)">Confirm</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Cancel(r.Id)">Cancel</button>
+                            }
+                            else if (r.Status == "Confirmed")
+                            {
+                                <button class="btn btn-sm btn-secondary me-1" @onclick="() => Complete(r.Id)">Complete</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => Cancel(r.Id)">Cancel</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<ReservationDto> reservations = new();
+    private bool isLoading = true;
+    private string? message;
+    private string messageClass = "alert-success";
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        isLoading = true;
+        var result = await Http.GetFromJsonAsync<List<ReservationDto>>("api/v1/reservations");
+        reservations = result ?? new();
+        isLoading = false;
+    }
+
+    private async Task Confirm(int id) => await ChangeStatus(id, "confirm");
+    private async Task Cancel(int id)  => await ChangeStatus(id, "cancel");
+    private async Task Complete(int id) => await ChangeStatus(id, "complete");
+
+    private async Task ChangeStatus(int id, string action)
+    {
+        var response = await Http.PutAsJsonAsync($"api/v1/reservations/{id}/{action}", new { });
+        if (response.IsSuccessStatusCode)
+        {
+            ShowMessage("Reservation updated.", "alert-success");
+            await Load();
+        }
+        else
+        {
+            var err = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            ShowMessage(err?.Message ?? "Update failed.", "alert-danger");
+        }
+    }
+
+    private void ShowMessage(string msg, string css) { message = msg; messageClass = css; }
+
+    private static string StatusColor(string status) => status switch
+    {
+        "Confirmed" => "success",
+        "Cancelled"  => "danger",
+        "Completed"  => "secondary",
+        _            => "warning"
+    };
+
+    private class ReservationDto
+    {
+        public int Id { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public decimal TotalPrice { get; set; }
+        public List<object> Items { get; set; } = new();
+    }
+
+    private class ErrorResponse
+    {
+        public string? Message { get; set; }
+    }
+}

@@ -37,7 +37,7 @@
                     <tr>
                         <td>@r.Id</td>
                         <td>@r.StartDate.ToString("MMM d") — @r.EndDate.ToString("MMM d, yyyy")</td>
-                        <td>@r.ItemCount item(s)</td>
+                        <td>@r.Items.Count item(s)</td>
                         <td>$@r.TotalPrice.ToString("F2")</td>
                         <td><span class="badge bg-@StatusColor(r.Status)">@r.Status</span></td>
                         <td><a href="reservations/@r.Id" class="btn btn-sm btn-outline-primary">View</a></td>
@@ -74,6 +74,6 @@
         public DateTime EndDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public decimal TotalPrice { get; set; }
-        public int ItemCount { get; set; }
+        public List<object> Items { get; set; } = new();
     }
 }
