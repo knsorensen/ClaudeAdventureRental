@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using AdventureRental.Web;
+using AdventureRental.Web.Auth;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -14,8 +14,10 @@ builder.Services.AddMsalAuthentication(options =>
         $"api://{builder.Configuration["AzureAd:ClientId"]}/access_as_user");
 });
 
+builder.Services.AddTransient<OptionalBearerHandler>();
+
 builder.Services.AddHttpClient("api", c => c.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
-    .AddHttpMessageHandler<BaseAddressAuthorizationMessageHandler>();
+    .AddHttpMessageHandler<OptionalBearerHandler>();
 
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("api"));
