@@ -28,8 +28,8 @@ public class ReservationsController : ControllerBase
     [HttpGet("my")]
     public async Task<ActionResult<IEnumerable<ReservationDto>>> GetMine()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var customer = await _uow.Customers.GetByUserIdAsync(userId!);
+        var oid = User.FindFirstValue("oid");
+        var customer = await _uow.Customers.GetByUserIdAsync(oid!);
         if (customer == null) return Ok(Array.Empty<ReservationDto>());
 
         var reservations = await _uow.Reservations.GetByCustomerIdAsync(customer.Id);
@@ -44,8 +44,8 @@ public class ReservationsController : ControllerBase
 
         if (!User.IsInRole("Admin"))
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var customer = await _uow.Customers.GetByUserIdAsync(userId!);
+            var oid = User.FindFirstValue("oid");
+            var customer = await _uow.Customers.GetByUserIdAsync(oid!);
             if (customer == null || reservation.CustomerId != customer.Id)
                 return Forbid();
         }
@@ -56,17 +56,33 @@ public class ReservationsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ReservationDto>> Create(CreateReservationRequest request)
     {
-        // Npgsql requires UTC datetimes for timestamptz columns
         request.StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc);
         request.EndDate = DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc);
 
         if (request.StartDate >= request.EndDate)
             return BadRequest(new { message = "EndDate must be after StartDate." });
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var customer = await _uow.Customers.GetByUserIdAsync(userId!);
+        var oid = User.FindFirstValue("oid");
+        var customer = await _uow.Customers.GetByUserIdAsync(oid!);
         if (customer == null)
-            return BadRequest(new { message = "Customer profile not found for this user." });
+        {
+            // Auto-create Customer record from Entra token claims
+            var firstName = User.FindFirstValue("given_name") ?? "Unknown";
+            var lastName = User.FindFirstValue("family_name") ?? "User";
+            var email = User.FindFirstValue("preferred_username")
+                ?? User.FindFirstValue("email")
+                ?? string.Empty;
+
+            customer = new Customer
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                UserId = oid
+            };
+            await _uow.Customers.AddAsync(customer);
+            await _uow.SaveChangesAsync();
+        }
 
         var items = new List<ReservationItem>();
         decimal total = 0;
@@ -126,8 +142,8 @@ public class ReservationsController : ControllerBase
 
         if (!User.IsInRole("Admin"))
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var customer = await _uow.Customers.GetByUserIdAsync(userId!);
+            var oid = User.FindFirstValue("oid");
+            var customer = await _uow.Customers.GetByUserIdAsync(oid!);
             if (customer == null || reservation.CustomerId != customer.Id)
                 return Forbid();
         }

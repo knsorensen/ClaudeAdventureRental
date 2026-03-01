@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AdventureRental.Core.DTOs.Customer;
+
 using AdventureRental.Core.Entities;
 using AdventureRental.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -27,8 +28,8 @@ public class CustomersController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<CustomerDto>> GetMe()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var customer = await _uow.Customers.GetByUserIdAsync(userId!);
+        var oid = User.FindFirstValue("oid");
+        var customer = await _uow.Customers.GetByUserIdAsync(oid!);
         return customer == null ? NotFound() : Ok(Map(customer));
     }
 
@@ -69,8 +70,8 @@ public class CustomersController : ControllerBase
 
         if (!User.IsInRole("Admin"))
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var myCustomer = await _uow.Customers.GetByUserIdAsync(userId!);
+            var oid = User.FindFirstValue("oid");
+            var myCustomer = await _uow.Customers.GetByUserIdAsync(oid!);
             if (myCustomer == null || myCustomer.Id != id)
                 return Forbid();
         }

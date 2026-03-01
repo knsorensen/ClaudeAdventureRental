@@ -1,60 +1,34 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using AdventureRental.Core.Interfaces;
 using AdventureRental.Infrastructure.Data;
-using AdventureRental.Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Azure Key Vault (skipped locally when KeyVaultName is empty)
+var kvName = builder.Configuration["KeyVaultName"];
+if (!string.IsNullOrWhiteSpace(kvName))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri($"https://{kvName}.vault.azure.net/"),
+        new DefaultAzureCredential());
+}
+
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 8;
-    options.Password.RequireNonAlphanumeric = false;
-    options.User.RequireUniqueEmail = true;
-})
-.AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
-
-// JWT Authentication
-var jwtSecret = builder.Configuration["JwtSettings:SecretKey"]
-    ?? throw new InvalidOperationException("JwtSettings:SecretKey is required. Set it via user-secrets.");
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-        ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-});
+// Authentication — Microsoft.Identity.Web validates Entra tokens
+builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration);
 
 builder.Services.AddAuthorization();
 
 // Application services
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<SeedDataService>();
 
 // Controllers
 builder.Services.AddControllers()
@@ -72,7 +46,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter your JWT token."
+        Description = "Enter your Entra access token."
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -90,13 +64,11 @@ builder.Services.AddResponseCompression();
 
 var app = builder.Build();
 
-// Run migrations and seed data
+// Run migrations
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-    var seeder = scope.ServiceProvider.GetRequiredService<SeedDataService>();
-    await seeder.SeedAsync();
 }
 
 if (app.Environment.IsDevelopment())
